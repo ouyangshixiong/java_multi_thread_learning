@@ -20,6 +20,7 @@ public class JavaThreadProblem {
 	private static void stopProblem() throws InterruptedException{
 		Thread t = new Thread(){
 			public void run() {
+				//模拟一个线程在反复争抢资源reentrantLock
 				for (int i = 0; i < 10000; i++) {
 					try {
 						System.out.println("t running count=" + i);
@@ -28,6 +29,7 @@ public class JavaThreadProblem {
 						}else{
 							System.out.println("thread can not acqire lock");
 						}
+						//抢到reentrantLock先sleep1秒
 						Thread.sleep(1000);
 					} catch (InterruptedException e) {
 						e.printStackTrace();
@@ -39,10 +41,13 @@ public class JavaThreadProblem {
 			};
 			
 		};
+		//启动线程t
 		t.start();
+		//主程序先sleep2秒，等线程t先运行
 		Thread.sleep(2000);
-		//主进程中终止Thread t
+		//主进程中终止线程t
 		t.stop();
+		//立刻去争抢共享资源reentrantLock
 		for (int i = 0; i < 10; i++) {
 			boolean tryLockResult = reentrantLock.tryLock();
 			System.out.println("main program try to acqure lock" + tryLockResult);
@@ -50,11 +55,68 @@ public class JavaThreadProblem {
 				reentrantLock.unlock();
 			}
 		}
+		//多运行几次有可能出现所谓的破坏状态，结果不可预知。
+	}
+	
+	
+	private final static Object shareObj1 = new Object();
+	private final static Object shareObj2 = new Object();
+	
+	/**
+	 * 线程suspend(暂停)后有可能产生死锁
+	 * @throws InterruptedException
+	 */
+	private static void suspendProblem() throws InterruptedException{
+		Thread t1 = new Thread(){
+			public void run() {
+				synchronized (shareObj1) {
+					try {
+						System.out.println("logic in thread t1 begin...");
+						Thread.sleep(3000);
+						synchronized (shareObj2) {
+							Thread.sleep(3000);
+						}
+						System.out.println("logic in thread t1 end...");
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+			};
+		};
+		
+		Thread t2 = new Thread(){
+			public void run() {
+				synchronized (shareObj2) {
+					try {
+						System.out.println("logic in thread t2 begin...");
+						Thread.sleep(3000);
+						synchronized (shareObj1) {
+							Thread.sleep(3000);
+						}
+						System.out.println("logic in thread t2 end...");
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+			};
+		};
+		
+		t1.start();
+		t2.start();
+		Thread.sleep(1000);
+		System.out.println("thread t1 suspended");
+		t1.suspend();
+		
+		Thread.sleep(1000);
+		System.out.println("thread t1 resume");
+		t1.resume();
+		//线程1重启后，程序死锁了，无法继续下去
 	}
 	
 	
 	public static void main(String[] args) throws InterruptedException {
 		stopProblem();
+		suspendProblem();
 	}
 
 }

@@ -3,8 +3,6 @@ package com.mmgss.java.multithread;
 import java.util.concurrent.locks.ReentrantLock;
 
 /**
- * 本程序演示的是使用Thread.stop的时候，出现的所谓破坏状态和不可预知的结果
- * 反复运行几遍程序，就会看到错误：java.lang.IllegalMonitorStateException
  * @author ouyangshixiong
  *
  */
@@ -15,6 +13,8 @@ public class JavaThreadProblem {
 	
 	/**
 	 * 演示Thread.stop为什么会标记为过时
+	 * 本程序演示的是使用Thread.stop的时候，出现的所谓破坏状态和不可预知的结果
+	 * 反复运行几遍程序，就会看到错误：java.lang.IllegalMonitorStateException
 	 * @throws InterruptedException
 	 */
 	private static void stopProblem() throws InterruptedException{
@@ -60,10 +60,9 @@ public class JavaThreadProblem {
 	
 	
 	private final static Object shareObj1 = new Object();
-	private final static Object shareObj2 = new Object();
 	
 	/**
-	 * 线程suspend(暂停)后有可能产生死锁
+	 * 线程suspend(暂停)后产生死锁
 	 * @throws InterruptedException
 	 */
 	private static void suspendProblem() throws InterruptedException{
@@ -71,12 +70,8 @@ public class JavaThreadProblem {
 			public void run() {
 				synchronized (shareObj1) {
 					try {
-						System.out.println("logic in thread t1 begin...");
-						Thread.sleep(3000);
-						synchronized (shareObj2) {
-							Thread.sleep(3000);
-						}
-						System.out.println("logic in thread t1 end...");
+						System.out.println("thread t1 begin... hold resource shareObj1");
+						Thread.sleep(100000);
 					} catch (InterruptedException e) {
 						e.printStackTrace();
 					}
@@ -86,13 +81,13 @@ public class JavaThreadProblem {
 		
 		Thread t2 = new Thread(){
 			public void run() {
-				synchronized (shareObj2) {
+				synchronized (shareObj1) {
 					try {
 						System.out.println("logic in thread t2 begin...");
 						Thread.sleep(3000);
-						synchronized (shareObj1) {
-							Thread.sleep(3000);
-						}
+						//如果竞争到共享资源shareObj1，resume线程t1
+						t1.resume();
+						System.out.println("thread t1 resume");
 						System.out.println("logic in thread t2 end...");
 					} catch (InterruptedException e) {
 						e.printStackTrace();
@@ -106,16 +101,13 @@ public class JavaThreadProblem {
 		Thread.sleep(1000);
 		System.out.println("thread t1 suspended");
 		t1.suspend();
-		
-		Thread.sleep(1000);
-		System.out.println("thread t1 resume");
-		t1.resume();
-		//线程1重启后，程序死锁了，无法继续下去
+
+		//线程1重启不了，程序死锁了，无法继续下去
 	}
 	
 	
 	public static void main(String[] args) throws InterruptedException {
-		stopProblem();
+//		stopProblem();
 		suspendProblem();
 	}
 
